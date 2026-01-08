@@ -1,4 +1,3 @@
-# core/models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -60,7 +59,7 @@ class TrackSuggestion(models.Model):
     suggested_at = models.DateTimeField(default=timezone.now, verbose_name="Дата предложения")
 
     class Meta:
-        unique_together = ('event', 'track')  # Один трек — одно предложение на мероприятие
+        unique_together = ('event', 'track')
         verbose_name = "Предложение трека"
         verbose_name_plural = "Предложения треков"
 
