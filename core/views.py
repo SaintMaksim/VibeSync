@@ -2,6 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .models import Event, Track, TrackSuggestion
 from .utils import search_tracks
+from .utils import balance_playlist
+
 
 
 def event_detail(request, access_code):
@@ -62,3 +64,28 @@ def event_detail(request, access_code):
         'event': event,
         'suggestions': suggestions,
     })
+
+def final_playlist(request, access_code):
+    event = get_object_or_404(Event, access_code=access_code, host=request.user)
+    suggestions = event.suggestions.select_related('track').all()
+
+    # Формируем сбалансированный плейлист
+    balanced_ids = balance_playlist(suggestions, event.max_genre_percent)
+    balanced_suggestions = [s for s in suggestions if s.id in balanced_ids]
+
+    # Подготовка данных для Chart.js
+    all_genres = []
+    for s in balanced_suggestions:
+        all_genres.extend(parse_genres_from_tags(s.track.tags))
+    from collections import Counter
+    genre_counter = Counter(all_genres)
+    chart_labels = list(genre_counter.keys())
+    chart_data = list(genre_counter.values())
+
+    context = {
+        'event': event,
+        'balanced_suggestions': balanced_suggestions,
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+    }
+    return render(request, 'core/final_playlist.html', context)

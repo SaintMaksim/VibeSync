@@ -9,8 +9,17 @@
 <body class="bg-light">
     <div class="container py-4">
         <header class="mb-4">
-            <h1>{{ event.title }}</h1>
-            <p class="text-muted">{{ event.description }}</p>
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1>{{ event.title }}</h1>
+                    <p class="text-muted">{{ event.description }}</p>
+                </div>
+                {% if user == event.host %}
+                    <a href="{% url 'core:final_playlist' event.access_code %}" class="btn btn-success">
+                        Сформировать финальный плейлист
+                    </a>
+                {% endif %}
+            </div>
             <hr>
         </header>
 
