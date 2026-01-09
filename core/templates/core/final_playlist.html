@@ -10,13 +10,16 @@
 <div class="container py-4">
     <h1>Финальный плейлист: {{ event.title }}</h1>
     <a href="{% url 'core:event_detail' event.access_code %}" class="btn btn-secondary mb-3">← Назад</a>
-
+    <a href="{% url 'core:download_playlist' event.access_code %}" class="btn btn-outline-secondary mb-3">Скачать .txt</a>
     <!-- Диаграмма жанров -->
     <div class="mb-5">
         <h2>Распределение жанров</h2>
         <canvas id="genreChart" width="400" height="200"></canvas>
         <script>
             const ctx = document.getElementById('genreChart').getContext('2d');
+
+            const genreToTracks = {{ genre_to_tracks|safe }};
+
             new Chart(ctx, {
                 type: 'pie',
                 data: {
@@ -25,14 +28,27 @@
                         data: {{ chart_data|safe }},
                         backgroundColor: [
                             '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                            '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#36A2EB'
+                            '#FF9F40', '#8E5EA2', '#37A27F', '#E6773B', '#4D85BD',
+                            '#C43A5A', '#7F60A8', '#2E8B57', '#D2691E', '#8B008B'
                         ]
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: { position: 'top' }
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const genre = context.label;
+                                    const tracks = genreToTracks[genre] || [];
+                                    if (tracks.length > 0) {
+                                        return '\n' + tracks.join('\n');
+                                    }
+                                    return '';
+                                }
+                            }
+                        }
                     }
                 }
             });

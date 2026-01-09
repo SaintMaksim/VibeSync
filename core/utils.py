@@ -2,6 +2,7 @@ import os
 import requests
 import pandas as pd
 from dotenv import load_dotenv
+from core.models import TrackSuggestion
 
 load_dotenv()
 
@@ -54,12 +55,10 @@ def get_track_info(artist, title):
 def balance_playlist(suggestions, max_genre_percent):
     """
     Формирует сбалансированный плейлист.
-    suggestions: QuerySet[TrackSuggestion]
-    max_genre_percent: int (например, 30)
-    Возвращает: список отфильтрованных TrackSuggestion, отсортированных по votes_score
+    Возвращает QuerySet[TrackSuggestion], отсортированный по votes_score.
     """
     if not suggestions:
-        return []
+        return TrackSuggestion.objects.none()
 
     data = []
     for s in suggestions:
@@ -69,22 +68,24 @@ def balance_playlist(suggestions, max_genre_percent):
         for genre in genres:
             data.append({
                 'suggestion_id': s.id,
-                'track_title': s.track.title,
-                'track_artist': s.track.artist,
                 'genre': genre,
                 'votes_score': s.votes_score,
             })
 
     df = pd.DataFrame(data)
     total_tracks = len(suggestions)
-    max_genre_count = int(total_tracks * max_genre_percent / 100)
+    max_genre_count = max(1, int(total_tracks * max_genre_percent / 100))
+
     genre_counts = df['genre'].value_counts()
     allowed_genres = genre_counts[genre_counts <= max_genre_count].index
 
     filtered_df = df[df['genre'].isin(allowed_genres)]
-    final_suggestions = filtered_df.drop_duplicates(subset=['suggestion_id'])
-    final_suggestions = final_suggestions.sort_values('votes_score', ascending=False)
-    return final_suggestions['suggestion_id'].tolist()
+    final_ids = filtered_df.drop_duplicates(subset=['suggestion_id'])['suggestion_id'].tolist()
+
+    # Возвращаем QuerySet, а не список ID
+    return TrackSuggestion.objects.filter(
+        id__in=final_ids
+    ).select_related('track').order_by('-votes_score')
 
 def search_tracks(query: str, limit: int = 5):
     """
@@ -139,7 +140,7 @@ def search_tracks(query: str, limit: int = 5):
 
 def parse_genres_from_tags(tags_str):
     """Преобразует строку тегов в список жанров"""
-    if not tags_str:
+    if not tags_str or tags_str == "[]" or tags_str.strip() == "":
         return []
     genres = [g.strip().lower() for g in tags_str.split(',') if g.strip()]
     return list(dict.fromkeys(genres))

@@ -3,7 +3,20 @@ from django.contrib import messages
 from .models import Event, Track, TrackSuggestion
 from .utils import search_tracks
 from .utils import balance_playlist, parse_genres_from_tags
+from django.http import HttpResponse
 
+
+def download_playlist(request, access_code):
+    event = get_object_or_404(Event, access_code=access_code, host=request.user)
+    balanced = balance_playlist(event.suggestions.all(), event.max_genre_percent)
+
+    response = HttpResponse(content_type='text/plain; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{event.title}_playlist.txt"'
+
+    lines = [f"{i + 1}. {s.track.artist} — {s.track.title}"
+             for i, s in enumerate(balanced)]
+    response.write("\n".join(lines))
+    return response
 
 def event_detail(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, is_active=True)
@@ -78,18 +91,28 @@ def event_detail(request, access_code):
         'suggestions': suggestions,
     })
 
+
 def final_playlist(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, host=request.user)
-    suggestions = event.suggestions.select_related('track').all()
 
-    # Формируем сбалансированный плейлист
-    balanced_ids = balance_playlist(suggestions, event.max_genre_percent)
-    balanced_suggestions = [s for s in suggestions if s.id in balanced_ids]
+    # Получаем сбалансированный QuerySet напрямую
+    balanced_suggestions = balance_playlist(
+        event.suggestions.select_related('track').all(),
+        event.max_genre_percent
+    )
 
-    # Подготовка данных для Chart.js
     all_genres = []
+    genre_to_tracks = {}
+
     for s in balanced_suggestions:
-        all_genres.extend(parse_genres_from_tags(s.track.tags))
+        genres = parse_genres_from_tags(s.track.tags)
+        primary_genre = genres[0] if genres else 'unknown'#В случае если нет тега жанра то жанр "unknown"
+        all_genres.append(primary_genre)
+
+        if primary_genre not in genre_to_tracks:
+            genre_to_tracks[primary_genre] = []
+        genre_to_tracks[primary_genre].append(f"{s.track.artist} — {s.track.title}")
+
     from collections import Counter
     genre_counter = Counter(all_genres)
     chart_labels = list(genre_counter.keys())
@@ -100,5 +123,6 @@ def final_playlist(request, access_code):
         'balanced_suggestions': balanced_suggestions,
         'chart_labels': chart_labels,
         'chart_data': chart_data,
+        'genre_to_tracks': genre_to_tracks,
     }
     return render(request, 'core/final_playlist.html', context)

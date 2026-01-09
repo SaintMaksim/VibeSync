@@ -12,7 +12,7 @@ class Event(models.Model):
     ends_at = models.DateTimeField(verbose_name="Окончание голосования")
     is_active = models.BooleanField(default=True, verbose_name="Активно")
     max_genre_percent = models.PositiveSmallIntegerField(
-        default=30,
+        default=50,
         help_text="Максимальный процент треков одного жанра (от 1 до 100)",
         verbose_name="Макс. доля жанра (%)"
     )
