@@ -88,6 +88,7 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
+                                <!-- Голосование -->
                                 <form method="post" class="d-inline">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="vote">
@@ -103,6 +104,16 @@
                                     <input type="hidden" name="vote_type" value="dislike">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Не нравится">👎</button>
                                 </form>
+
+                                <!-- Удаление (только для организатора) -->
+                                {% if user == event.host %}
+                                    <form method="post" class="ms-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_suggestion">
+                                        <input type="hidden" name="suggestion_id" value="{{ s.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">🗑️</button>
+                                    </form>
+                                {% endif %}
                             </div>
                         </div>
                     {% endfor %}

@@ -2,8 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .models import Event, Track, TrackSuggestion
 from .utils import search_tracks
-from .utils import balance_playlist
-
+from .utils import balance_playlist, parse_genres_from_tags
 
 
 def event_detail(request, access_code):
@@ -24,6 +23,20 @@ def event_detail(request, access_code):
                     suggestion.votes_score -= 1
                 suggestion.save()
                 #Обновление без сообщения, просто перезагрузка
+            except TrackSuggestion.DoesNotExist:
+                messages.error(request, "Предложение не найдено.")
+            return redirect('core:event_detail', access_code=access_code)
+
+        # Удаление предложения (только для организатора)
+        elif action == "delete_suggestion":
+            suggestion_id = request.POST.get("suggestion_id")
+            try:
+                suggestion = TrackSuggestion.objects.get(id=suggestion_id, event=event)
+                if request.user == event.host:
+                    suggestion.delete()
+                    messages.success(request, "Трек удалён из предложения.")
+                else:
+                    messages.error(request, "Только организатор может удалять треки.")
             except TrackSuggestion.DoesNotExist:
                 messages.error(request, "Предложение не найдено.")
             return redirect('core:event_detail', access_code=access_code)
