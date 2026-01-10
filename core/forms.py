@@ -1,3 +1,4 @@
+# core/forms.py
 from django import forms
 from .models import Event
 import random

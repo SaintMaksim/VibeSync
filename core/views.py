@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .models import Event, Track, TrackSuggestion
@@ -154,28 +155,41 @@ def simple_register(request):
             messages.error(request, "Имя должно содержать минимум 2 символа.")
             return render(request, 'core/simple_register.html')
 
-        # Генерируем уникальное имя пользователя
-        username_base = name.lower().replace(" ", "_")
+        # Очищаем имя от лишних символов
+        import re
+        clean_name = re.sub(r'[^a-zA-Zа-яА-Я0-9\s]', '', name)
+        username_base = clean_name.lower().replace(" ", "_")
+
+        # Гарантированно уникальное имя
         username = username_base
         counter = 1
         while User.objects.filter(username=username).exists():
             username = f"{username_base}_{counter}"
             counter += 1
+            # Защита от бесконечного цикла
+            if counter > 1000:
+                username = f"user_{User.objects.count() + 1}"
+                break
 
-        # Создаём пользователя с рандомным паролем
+        # Генерируем пароль
         password = generate_random_password()
-        user = User.objects.create_user(
-            username=username,
-            first_name=name[:30],
-            password=password
-        )
-        login(request, user)
-
-        # Перенаправляем на главную
-        messages.success(request, f"Добро пожаловать, {name}!")
-        return redirect('core:home')
+        try:
+            user = User.objects.create_user(
+                username=username,
+                first_name=name[:30],
+                password=password
+            )
+            login(request, user)
+            messages.success(request, f"Добро пожаловать, {name}!")
+            return redirect('core:home')
+        except IntegrityError:
+            # На случай гонки (очень редко)
+            messages.error(request, "Ошибка регистрации. Попробуйте другое имя.")
+            return render(request, 'core/simple_register.html')
 
     return render(request, 'core/simple_register.html')
+
+
 def create_event(request):
     if not request.user.is_authenticated:
         return redirect('core:home')
@@ -194,6 +208,12 @@ def create_event(request):
 
     return render(request, 'core/create_event.html', {'form': form})
 
+def event_access(request):
+    """Перенаправление на мероприятие по коду"""
+    code = request.GET.get('code', '').strip()
+    if code:
+        return redirect('core:event_detail', access_code=code)
+    return redirect('core:home')
 
 def my_events(request):
     if not request.user.is_authenticated:

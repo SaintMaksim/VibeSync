@@ -10,6 +10,13 @@
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <h2 class="mb-4">Создать мероприятие</h2>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-success">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3">
@@ -25,7 +32,7 @@
                         {{ form.max_genre_percent }}
                         <div class="form-text">Рекомендуется: 30–50%</div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Создать</button>
+                    <button type="submit" class="btn btn-primary">Создать мероприятие</button>
                     <a href="{% url 'core:home' %}" class="btn btn-link">← Отмена</a>
                 </form>
             </div>
