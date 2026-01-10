@@ -4,7 +4,12 @@ from .models import Event, Track, TrackSuggestion
 from .utils import search_tracks
 from .utils import balance_playlist, parse_genres_from_tags
 from django.http import HttpResponse
-
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib.auth import login
+from .forms import EventForm
+import secrets
+import string
 
 def download_playlist(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, host=request.user)
@@ -126,3 +131,73 @@ def final_playlist(request, access_code):
         'genre_to_tracks': genre_to_tracks,
     }
     return render(request, 'core/final_playlist.html', context)
+
+
+def home(request):
+    return render(request, 'core/home.html')
+
+
+def generate_random_password(length=32):
+    """Генерирует случайный пароль заданной длины"""
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def simple_register(request):
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        if not name:
+            messages.error(request, "Пожалуйста, введите ваше имя.")
+            return render(request, 'core/simple_register.html')
+
+        if len(name) < 2:
+            messages.error(request, "Имя должно содержать минимум 2 символа.")
+            return render(request, 'core/simple_register.html')
+
+        # Генерируем уникальное имя пользователя
+        username_base = name.lower().replace(" ", "_")
+        username = username_base
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{username_base}_{counter}"
+            counter += 1
+
+        # Создаём пользователя с рандомным паролем
+        password = generate_random_password()
+        user = User.objects.create_user(
+            username=username,
+            first_name=name[:30],
+            password=password
+        )
+        login(request, user)
+
+        # Перенаправляем на главную
+        messages.success(request, f"Добро пожаловать, {name}!")
+        return redirect('core:home')
+
+    return render(request, 'core/simple_register.html')
+def create_event(request):
+    if not request.user.is_authenticated:
+        return redirect('core:home')
+
+    if request.method == "POST":
+        form = EventForm(request.POST)
+        if form.is_valid():
+            event = form.save(commit=False)
+            event.host = request.user
+            event.is_active = True
+            event.save()
+            messages.success(request, f"Мероприятие создано! Ссылка для гостей: /event/{event.access_code}/")
+            return redirect('core:my_events')
+    else:
+        form = EventForm()
+
+    return render(request, 'core/create_event.html', {'form': form})
+
+
+def my_events(request):
+    if not request.user.is_authenticated:
+        return redirect('core:home')
+
+    events = Event.objects.filter(host=request.user).order_by('-created_at')
+    return render(request, 'core/my_events.html', {'events': events})
