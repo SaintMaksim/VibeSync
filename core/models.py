@@ -52,16 +52,30 @@ class Track(models.Model):
 
 
 class TrackSuggestion(models.Model):
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="suggestions", verbose_name="Мероприятие")
-    track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name="suggestions", verbose_name="Трек")
-    suggested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Предложил")
-    votes_score = models.IntegerField(default=0, verbose_name="Рейтинг голосов")
-    suggested_at = models.DateTimeField(default=timezone.now, verbose_name="Дата предложения")
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, related_name='suggestions')
+    track = models.ForeignKey('Track', on_delete=models.CASCADE)
+    suggested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    suggested_at = models.DateTimeField(auto_now_add=True)
+
+    # Новые поля для голосования
+    liked_by = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='liked_suggestions'
+    )
+    disliked_by = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='disliked_suggestions'
+    )
+
+    @property
+    def votes_score(self):
+        """Вычисляет рейтинг как (лайки - дизлайки)"""
+        return self.liked_by.count() - self.disliked_by.count()
+
+    def __str__(self):
+        return f"{self.track.artist} — {self.track.title} ({self.votes_score})"
 
     class Meta:
         unique_together = ('event', 'track')
-        verbose_name = "Предложение трека"
-        verbose_name_plural = "Предложения треков"
-
-    def __str__(self):
-        return f"{self.track} → {self.event}"

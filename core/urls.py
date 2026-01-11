@@ -6,6 +6,7 @@ app_name = 'core'
 urlpatterns = [
     path('', views.home, name='home'),
     path('register/', views.simple_register, name='simple_register'),
+    path('logout/', views.logout_view, name='logout'),
     path('event-access/', views.event_access, name='event_access'),
     path('create/', views.create_event, name='create_event'),
     path('my-events/', views.my_events, name='my_events'),
