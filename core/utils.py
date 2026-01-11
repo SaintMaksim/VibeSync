@@ -1,6 +1,7 @@
 import os
 import requests
 import pandas as pd
+from django.db.models import Count
 from dotenv import load_dotenv
 from core.models import TrackSuggestion
 
@@ -52,16 +53,26 @@ def get_track_info(artist, title):
         print(f"track.getInfo error for {artist} - {title}: {e}")
         return {}
 
-def balance_playlist(suggestions, max_genre_percent):
+
+def balance_playlist(suggestions_queryset, max_genre_percent):
     """
-    Формирует сбалансированный плейлист.
-    Возвращает QuerySet[TrackSuggestion], отсортированный по votes_score.
+    Формирует сбалансированный плейлист из аннотированного QuerySet.
     """
-    if not suggestions:
+    if not suggestions_queryset.exists():
         return TrackSuggestion.objects.none()
 
+    # Получаем ID предложений с их рейтингом
+    suggestion_data = suggestions_queryset.values('id', 'calculated_score')
+
+    # Создаем словарь {id: score}
+    scores_dict = {item['id']: item['calculated_score'] for item in suggestion_data}
+
+    # Получаем все предложения по ID
+    suggestions_list = list(suggestions_queryset)
+
+    # Собираем данные для анализа жанров
     data = []
-    for s in suggestions:
+    for s in suggestions_list:
         genres = parse_genres_from_tags(s.track.tags)
         if not genres:
             genres = ['unknown']
@@ -69,11 +80,11 @@ def balance_playlist(suggestions, max_genre_percent):
             data.append({
                 'suggestion_id': s.id,
                 'genre': genre,
-                'votes_score': s.votes_score,
+                'votes_score': scores_dict[s.id],  # Используем аннотированный рейтинг
             })
 
     df = pd.DataFrame(data)
-    total_tracks = len(suggestions)
+    total_tracks = len(suggestions_list)
     max_genre_count = max(1, int(total_tracks * max_genre_percent / 100))
 
     genre_counts = df['genre'].value_counts()
@@ -82,10 +93,12 @@ def balance_playlist(suggestions, max_genre_percent):
     filtered_df = df[df['genre'].isin(allowed_genres)]
     final_ids = filtered_df.drop_duplicates(subset=['suggestion_id'])['suggestion_id'].tolist()
 
-    # Возвращаем QuerySet, а не список ID
+    # Возвращаем QuerySet с правильной сортировкой
     return TrackSuggestion.objects.filter(
         id__in=final_ids
-    ).select_related('track').order_by('-votes_score')
+    ).annotate(
+        calculated_score=Count('liked_by') - Count('disliked_by')
+    ).select_related('track').order_by('-calculated_score')
 
 def search_tracks(query: str, limit: int = 5):
     """

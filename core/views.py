@@ -12,9 +12,16 @@ from .forms import EventForm
 import secrets
 import string
 
+
 def download_playlist(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, host=request.user)
-    balanced = balance_playlist(event.suggestions.all(), event.max_genre_percent)
+
+    # Аннотируем предложения рейтингом ПЕРЕД передачей в balance_playlist
+    annotated_suggestions = event.suggestions.annotate(
+        calculated_score=Count('liked_by') - Count('disliked_by')
+    ).select_related('track')
+
+    balanced = balance_playlist(annotated_suggestions, event.max_genre_percent)
 
     response = HttpResponse(content_type='text/plain; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{event.title}_playlist.txt"'
@@ -122,11 +129,11 @@ def event_detail(request, access_code):
 def final_playlist(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, host=request.user)
 
+    # Используем ДРУГОЕ имя для аннотации!
     annotated_suggestions = event.suggestions.annotate(
         calculated_score=Count('liked_by') - Count('disliked_by')
     ).select_related('track')
 
-    # Получаем сбалансированный QuerySet напрямую
     balanced_suggestions = balance_playlist(annotated_suggestions, event.max_genre_percent)
 
     all_genres = []
@@ -134,7 +141,7 @@ def final_playlist(request, access_code):
 
     for s in balanced_suggestions:
         genres = parse_genres_from_tags(s.track.tags)
-        primary_genre = genres[0] if genres else 'unknown'#В случае если нет тега жанра то жанр "unknown"
+        primary_genre = genres[0] if genres else 'unknown'
         all_genres.append(primary_genre)
 
         if primary_genre not in genre_to_tracks:
@@ -154,7 +161,6 @@ def final_playlist(request, access_code):
         'genre_to_tracks': genre_to_tracks,
     }
     return render(request, 'core/final_playlist.html', context)
-
 
 def home(request):
     return render(request, 'core/home.html')
@@ -226,8 +232,9 @@ def create_event(request):
             event.host = request.user
             event.is_active = True
             event.save()
-            messages.success(request, f"Мероприятие создано! Ссылка для гостей: /event/{event.access_code}/")
-            return redirect('core:my_events')
+            messages.success(request, f"Мероприятие «{event.title}» создано!")
+            # Перенаправляем СРАЗУ на страницу мероприятия
+            return redirect('core:event_detail', access_code=event.access_code)
     else:
         form = EventForm()
 

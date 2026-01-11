@@ -26,7 +26,6 @@ class EventForm(forms.ModelForm):
     def save(self, commit=True):
         event = super().save(commit=False)
         if not event.access_code:
-            # Генерируем уникальный код
             while True:
                 code = generate_access_code()
                 if not Event.objects.filter(access_code=code).exists():

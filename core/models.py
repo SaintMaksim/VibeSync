@@ -1,7 +1,12 @@
+from datetime import timedelta
+from django.utils import timezone
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+def get_default_ends_at():
+    return timezone.now() + timedelta(days=7)
 
 class Event(models.Model):
     title = models.CharField(max_length=200, verbose_name="Название мероприятия")
@@ -9,7 +14,10 @@ class Event(models.Model):
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name="events", verbose_name="Организатор")
     access_code = models.CharField(max_length=12, unique=True, verbose_name="Код доступа")
     created_at = models.DateTimeField(default=timezone.now, verbose_name="Создано")
-    ends_at = models.DateTimeField(verbose_name="Окончание голосования")
+    ends_at = models.DateTimeField(
+        default=get_default_ends_at,
+        verbose_name="Окончание голосования"
+    )
     is_active = models.BooleanField(default=True, verbose_name="Активно")
     max_genre_percent = models.PositiveSmallIntegerField(
         default=50,
