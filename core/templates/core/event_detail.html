@@ -11,10 +11,10 @@
         <header class="mb-4">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
+                    <a href="{% url 'core:home' %}" class="btn btn-secondary">← Назад в меню</a>
                     <h1>{{ event.title }}</h1>
                     <p class="text-muted">{{ event.description }}</p>
                 </div>
-                <a href="{% url 'core:home' %}" class="btn btn-secondary">← Назад в меню</a>
                 {% if user == event.host %}
                     <a href="{% url 'core:final_playlist' event.access_code %}" class="btn btn-success">
                         Сформировать финальный плейлист
