@@ -8,17 +8,22 @@
 </head>
 <body class="bg-light">
 <div class="container py-4">
-    <a href="{% url 'core:event_detail' event.access_code %}" class="btn btn-secondary mb-3">← Назад</a>
-    <h1>Финальный плейлист: {{ event.title }}</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{% url 'core:event_detail' event.access_code %}" class="btn btn-secondary">← Назад</a>
     <a href="{% url 'core:download_playlist' event.access_code %}"
-   class="btn btn-primary"
-   download="{{ event.title }}_playlist.txt">
-    Скачать .txt
+       class="btn btn-primary"
+       download="{{ event.title }}_playlist.txt">
+        Скачать .txt
     </a>
+    </div>
+    <h1>Финальный плейлист: {{ event.title }}</h1>
+
     <!-- Диаграмма жанров -->
-    <div class="mb-5">
+    <div class="mb-5 text-center">
         <h2>Распределение жанров</h2>
-        <canvas id="genreChart" width="400" height="200"></canvas>
+        <div class="d-inline-block">
+            <canvas id="genreChart" width="400" height="300"></canvas>
+        </div>
         <script>
             const ctx = document.getElementById('genreChart').getContext('2d');
 
@@ -38,9 +43,12 @@
                     }]
                 },
                 options: {
-                    responsive: true,
+                    responsive: false,
+                    maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'top' },
+                        legend: {
+                            position: 'top'
+                        },
                         tooltip: {
                             callbacks: {
                                 afterLabel: function(context) {

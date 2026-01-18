@@ -61,7 +61,7 @@ class Track(models.Model):
 
 class TrackSuggestion(models.Model):
     event = models.ForeignKey('Event', on_delete=models.CASCADE, related_name='suggestions')
-    track = models.ForeignKey('Track', on_delete=models.CASCADE)
+    track = models.ForeignKey('Track', on_delete=models.CASCADE, related_name='suggestions')
     suggested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     suggested_at = models.DateTimeField(auto_now_add=True)
 

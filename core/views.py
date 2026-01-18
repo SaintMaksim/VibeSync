@@ -1,8 +1,7 @@
 from django.db import IntegrityError
 from django.contrib import messages
 from .models import Event, Track, TrackSuggestion
-from .utils import search_tracks
-from .utils import balance_playlist, parse_genres_from_tags
+from .utils import search_tracks, extract_genres_from_tags, get_mood_score, balance_playlist
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
@@ -129,18 +128,25 @@ def event_detail(request, access_code):
 def final_playlist(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, host=request.user)
 
-    # Используем ДРУГОЕ имя для аннотации!
     annotated_suggestions = event.suggestions.annotate(
         calculated_score=Count('liked_by') - Count('disliked_by')
     ).select_related('track')
 
     balanced_suggestions = balance_playlist(annotated_suggestions, event.max_genre_percent)
 
+    # НОВОЕ: Сортировка по настроению
+    if event.mood_sequence == 'energetic_to_calm':
+        balanced_suggestions = sorted(balanced_suggestions, key=lambda s: get_mood_score(s.track), reverse=True)
+    elif event.mood_sequence == 'calm_to_energetic':
+        balanced_suggestions = sorted(balanced_suggestions, key=lambda s: get_mood_score(s.track))
+    # mixed — оставляем как есть (по рейтингу)
+
+    # Сбор статистики для диаграммы (используем extract_genres_from_tags)
     all_genres = []
     genre_to_tracks = {}
 
     for s in balanced_suggestions:
-        genres = parse_genres_from_tags(s.track.tags)
+        genres = extract_genres_from_tags(s.track.tags)
         primary_genre = genres[0] if genres else 'unknown'
         all_genres.append(primary_genre)
 
