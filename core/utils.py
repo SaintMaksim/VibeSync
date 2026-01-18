@@ -101,22 +101,21 @@ def balance_playlist(suggestions_queryset, max_genre_percent):
         calculated_score=Count('liked_by') - Count('disliked_by')
     ).select_related('track').order_by('-calculated_score')
 
-def search_tracks(query: str, limit: int = 5):
+def search_tracks(query: str, limit: int = 5, offset: int = 0):
     """
-    Ищет треки в Last.fm по названию и дополняет их тегами через track.getInfo.
-    Возвращает список словарей с данными трека.
+    Ищет треки в Last.fm с поддержкой пагинации.
     """
     if not LASTFM_API_KEY:
         print("Ошибка: LASTFM_API_KEY не задан в .env")
         return []
 
-    # Шаг 1: Поиск треков
     params = {
         'method': 'track.search',
         'track': query,
         'api_key': LASTFM_API_KEY,
         'format': 'json',
         'limit': limit,
+        'page': offset // limit + 1  # Last.fm использует page, а не offset
     }
 
     try:
@@ -135,7 +134,6 @@ def search_tracks(query: str, limit: int = 5):
             if not artist or not title:
                 continue
 
-            # Шаг 2: Получаем инфу трека (теги, длительность)
             extra_info = get_track_info(artist, title)
 
             tracks.append({

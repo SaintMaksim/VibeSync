@@ -7,6 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.db.models import Count, F
 from django.contrib.auth import login, logout
+from django.core.paginator import Paginator
 from .forms import EventForm
 import secrets
 import string
@@ -34,10 +35,13 @@ def download_playlist(request, access_code):
 def event_detail(request, access_code):
     event = get_object_or_404(Event, access_code=access_code, is_active=True)
 
-    # Аннотируем предложения рейтингом
     base_suggestions = event.suggestions.annotate(
         calculated_score=Count('liked_by') - Count('disliked_by')
     ).select_related('track')
+
+    # Уникальные ключи сессии для каждого мероприятия
+    session_query_key = f'search_query_{access_code}'
+    session_page_key = f'search_page_{access_code}'
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -109,20 +113,38 @@ def event_detail(request, access_code):
         # Поиск треков
         else:
             query = request.POST.get("query", "").strip()
-            search_results = search_tracks(query, limit=5) if query else []
-            suggestions = base_suggestions.order_by('-calculated_score')
-            return render(request, 'core/event_detail.html', {
-                'event': event,
-                'suggestions': suggestions,
-                'search_results': search_results,
-                'query': query,
-            })
+            page = 1  # Начинаем с первой страницы при новом поиске
+            if query:
+                # Сохраняем запрос, привязанный к мероприятию
+                request.session[session_query_key] = query
+                request.session[session_page_key] = 1
+            else:
+                # Очищаем сессию для этого мероприятия
+                request.session.pop(session_query_key, None)
+                request.session.pop(session_page_key, None)
+
+            return redirect('core:event_detail', access_code=access_code)
 
     # GET-запрос
     suggestions = base_suggestions.order_by('-calculated_score')
+    search_results = []
+    query = request.session.get(session_query_key)
+    current_page = int(request.GET.get('page', request.session.get(session_page_key, 1)))
+
+    if query:
+        search_results = search_tracks(query, limit=5, offset=(current_page - 1) * 5)
+        paginator = Paginator(range(100), 5)
+        page_obj = paginator.get_page(current_page)
+        request.session[session_page_key] = current_page
+    else:
+        page_obj = None
+
     return render(request, 'core/event_detail.html', {
         'event': event,
         'suggestions': suggestions,
+        'search_results': search_results,
+        'query': query,
+        'page_obj': page_obj,
     })
 
 def final_playlist(request, access_code):
