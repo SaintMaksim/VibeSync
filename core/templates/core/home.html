@@ -1,48 +1,43 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>VibeSync - Коллективные плейлисты</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container py-5">
-        <h1 class="display-4 mb-4 text-center">VibeSync</h1>
-        <p class="lead mb-5 text-center">Создавайте музыкальные плейлисты вместе с друзьями!</p>
+{% extends 'core/base.html' %}
 
-        {% if user.is_authenticated %}
-            <div class="row justify-content-center">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            Привет, {{ user.first_name|default:user.username }}!
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <!-- Вход по коду мероприятия -->
-                                <form method="get" action="{% url 'core:event_access' %}" class="mb-3">
-                                    <div class="input-group">
-                                        <input type="text" name="code" class="form-control" placeholder="Введите код мероприятия" required>
-                                        <button class="btn btn-outline-primary" type="submit">Войти</button>
-                                    </div>
-                                </form>
+{% block title %}VibeSync - Коллективные плейлисты{% endblock %}
 
-                                <!-- Основные действия -->
-                                <a href="{% url 'core:create_event' %}" class="btn btn-primary">Создать мероприятие</a>
-                                <a href="{% url 'core:my_events' %}" class="btn btn-outline-secondary">Мои мероприятия</a>
-                            </div>
+{% block content %}
+<div class="py-5">
+    <h1 class="display-4 mb-4 text-center">VibeSync</h1>
+    <p class="lead mb-5 text-center">Создавайте музыкальные плейлисты вместе с друзьями!</p>
+
+    {% if user.is_authenticated %}
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Привет, {{ user.first_name|default:user.username }}!
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <!-- Вход по коду мероприятия -->
+                            <form method="get" action="{% url 'core:event_access' %}" class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" name="code" class="form-control" placeholder="Введите код мероприятия" required>
+                                    <button class="btn btn-outline-primary" type="submit">Войти</button>
+                                </div>
+                            </form>
+
+                            <!-- Основные действия -->
+                            <a href="{% url 'core:create_event' %}" class="btn btn-primary">Создать мероприятие</a>
+                            <a href="{% url 'core:my_events' %}" class="btn btn-outline-secondary">Мои мероприятия</a>
                         </div>
                     </div>
                 </div>
             </div>
-        {% else %}
-            <div class="text-center">
-                <div class="d-grid gap-3 d-md-flex justify-content-center">
-                    <a href="{% url 'core:simple_register' %}" class="btn btn-primary btn-lg">Зарегистрироваться</a>
-                </div>
+        </div>
+    {% else %}
+        <div class="text-center">
+            <div class="d-grid gap-3 d-md-flex justify-content-center">
+                <a href="{% url 'core:simple_register' %}" class="btn btn-primary btn-lg">Зарегистрироваться</a>
             </div>
-        {% endif %}
-    </div>
-</body>
-</html>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
